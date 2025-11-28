@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.3">
+<title>Dashboard System</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: Poppins, sans-serif;
+    background: linear-gradient(135deg, #5f2c82, #49a09d);
+    color: #fff;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .container {
+    width: 360px;
+    background: rgba(255,255,255,0.1);
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.3);
+    backdrop-filter: blur(10px);
+    transition: 0.4s;
+  }
+
+  h2 { text-align: center; margin-bottom: 15px; }
+
+  input, select {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    border-radius: 8px;
+    border: none;
+    outline: none;
+  }
+
+  button {
+    width: 100%;
+    padding: 10px;
+    background: #00c853;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+
+  button:hover {
+    background: #009624;
+  }
+
+  .hidden { display: none; }
+
+  .task-btn {
+    background: #ffb300;
+  }
+
+  .task-btn:disabled {
+    background: #555;
+    cursor: not-allowed;
+  }
+
+  .small {
+    font-size: 0.9em;
+    color: #ccc;
+  }
+
+  #withdrawHistory {
+    max-height: 100px;
+    overflow-y: auto;
+    background: rgba(255,255,255,0.15);
+    padding: 10px;
+    border-radius: 8px;
+  }
+</style>
+</head>
+<body>
+<div class="container" id="registerForm">
+  <h2>Register</h2>
+  <input type="text" id="regUsername" placeholder="Username">
+  <input type="password" id="regPassword" placeholder="Password">
+  <button onclick="registerUser()">Register</button>
+  <p>Already have an account? <a href="#" onclick="showLogin()">Login</a></p>
+</div>
+
+<div class="container hidden" id="loginForm">
+  <h2>Login</h2>
+  <input type="text" id="loginUsername" placeholder="Username">
+  <input type="password" id="loginPassword" placeholder="Password">
+  <button onclick="loginUser()">Login</button>
+  <p>Don’t have an account? <a href="#" onclick="showRegister()">Register</a></p>
+</div>
+
+<div class="container hidden" id="dashboard">
+  <h2>Welcome, <span id="displayUser"></span></h2>
+  <p>Balance: ₦<span id="balance">0</span></p>
+  
+  <button class="task-btn" id="taskButton" onclick="claimTask()">Click to Earn ₦500000</button>
+  <p id="taskTimer" class="small"></p>
+
+  <hr>
+  <button onclick="showDeposit()">Buy withdraw code</button><br><br>
+  <button onclick="showWithdraw()">Withdraw</button><br><br>
+  <button onclick="logoutUser()">Logout</button>
+
+  <div id="depositPage" class="hidden">
+    <h3>Send 15000 to the account below to recieve your withdraw code...</h3>
+    <p>Account Number: <span id="acctNo">8144281750</span> <button onclick="copyAcct()">📋 Copy</button></p>
+    <p>Bank: MOMO PSB</p>
+    <p>Name: Racheal Ali</p>
+    
+  </div><br><br>
+  <a href="https://chat.whatsapp.com/HibgzrZFGiV1IRjtB1YNDV?mode=ems_copy_t?text= Hello i but withdraw code "><button>WhatsApp us</button></a>
+  
+
+  <div id="withdrawPage" class="hidden">
+    <h3>Withdraw</h3>
+    <select id="bankName">
+      <option value="">Select Bank</option>
+      <option>Opay</option>
+      <option>GTBank</option>
+      <option>UBA</option>
+      <option>Access Bank</option>
+      <option>Keystone</option>
+      <option>sterling</option>
+        <option>Monipoint MFB</option>
+    </select>
+    
+    <input type="text" placeholder="Enter your account No" maxlength="10"  required>
+    <input type="text" placeholder="Enter user bank name" required>
+    <input type="number" id="withdrawAmount" placeholder="Enter amount">
+    <input type="text" placeholder="Enter your Withdrawal code..." maxlength="6" required="">
+    <button onclick="withdrawMoney()">Withdraw</button>
+
+    <h4>Withdraw History</h4>
+    <div id="withdrawHistory"></div>
+  </div>
+</div>
+
+<script>
+function showLogin(){
+  document.getElementById("registerForm").classList.add("hidden");
+  document.getElementById("loginForm").classList.remove("hidden");
+  document.getElementById("dashboard").classList.add("hidden");
+}
+
+function showRegister(){
+  document.getElementById("loginForm").classList.add("hidden");
+  document.getElementById("registerForm").classList.remove("hidden");
+  document.getElementById("dashboard").classList.add("hidden");
+}
+
+function registerUser(){
+  const username = document.getElementById("regUsername").value;
+  const password = document.getElementById("regPassword").value;
+  if(username==="" || password===""){ alert("Fill all fields"); return; }
+
+  let users = JSON.parse(localStorage.getItem("users")) || [];
+  if(users.find(u=>u.username===username)){ alert("Username exists"); return; }
+
+  users.push({ username, password, balance:0, lastTaskTime:0, history:[] });
+  localStorage.setItem("users", JSON.stringify(users));
+  alert("Registered successfully!");
+  showLogin();
+}
+
+function loginUser(){
+  const username = document.getElementById("loginUsername").value;
+  const password = document.getElementById("loginPassword").value;
+  let users = JSON.parse(localStorage.getItem("users")) || [];
+  const user = users.find(u=>u.username===username && u.password===password);
+  if(user){
+    localStorage.setItem("loggedInUser", username);
+    showDashboard(user);
+  }else alert("Invalid login");
+}
+
+function showDashboard(user){
+  document.getElementById("registerForm").classList.add("hidden");
+  document.getElementById("loginForm").classList.add("hidden");
+  document.getElementById("dashboard").classList.remove("hidden");
+  document.getElementById("displayUser").textContent=user.username;
+  document.getElementById("balance").textContent=user.balance;
+  updateHistory(user);
+  updateTaskButton(user);
+}
+
+function logoutUser(){
+  localStorage.removeItem("loggedInUser");
+  showLogin();
+}
+
+function showDeposit(){
+  document.getElementById("depositPage").classList.toggle("hidden");
+  document.getElementById("withdrawPage").classList.add("hidden");
+}
+
+function showWithdraw(){
+  document.getElementById("withdrawPage").classList.toggle("hidden");
+  document.getElementById("depositPage").classList.add("hidden");
+}
+
+function copyAcct(){
+  navigator.clipboard.writeText("8144281750");
+  alert("Account number copied!");
+}
+
+function withdrawMoney(){
+  const bank=document.getElementById("bankName").value;
+  const amount=document.getElementById("withdrawAmount").value;
+  if(bank===""||amount===""){alert("Fill all fields");return;}
+  alert("Withdrawal in process... Please wait!");
+
+  let users=JSON.parse(localStorage.getItem("users"));
+  const username=localStorage.getItem("loggedInUser");
+  const user=users.find(u=>u.username===username);
+
+  user.history.push({amount,bank,status:"Your cash will drop 24hrs"});
+  localStorage.setItem("users",JSON.stringify(users));
+  updateHistory(user);
+}
+
+function updateHistory(user){
+  const historyDiv=document.getElementById("withdrawHistory");
+  historyDiv.innerHTML="";
+  if(user.history.length===0){
+    historyDiv.innerHTML="<p>No withdraw history yet.</p>";
+  } else {
+    user.history.forEach(h=>{
+      const p=document.createElement("p");
+      p.textContent=`₦${h.amount} - ${h.status}`;
+      historyDiv.appendChild(p);
+    });
+  }
+}
+
+function claimTask(){
+  const username=localStorage.getItem("loggedInUser");
+  let users=JSON.parse(localStorage.getItem("users"));
+  const user=users.find(u=>u.username===username);
+
+  const now=Date.now();
+  if(now - user.lastTaskTime < 12*60*60*1000){
+    alert("You can only claim once every 12 hours!");
+    return;
+  }
+
+  user.balance += 500000;
+  user.lastTaskTime = now;
+  localStorage.setItem("users", JSON.stringify(users));
+  document.getElementById("balance").textContent=user.balance;
+  updateTaskButton(user);
+  alert("₦50000 added to your balance!");
+}
+
+function updateTaskButton(user){
+  const now=Date.now();
+  const taskBtn=document.getElementById("taskButton");
+  const timer=document.getElementById("taskTimer");
+  const timeLeft=25*60*60*1000-(now-user.lastTaskTime);
+
+  if(timeLeft>0){
+    taskBtn.disabled=true;
+    let hrs=Math.floor(timeLeft/(1000*60*60));
+    let mins=Math.floor((timeLeft%(1000*60*60))/(1000*60));
+    timer.textContent=`Next task in ${hrs}h ${mins}m`;
+    setTimeout(()=>updateTaskButton(user),60000);
+  } else {
+    taskBtn.disabled=false;
+    timer.textContent="";
+  }
+}
+
+window.onload=function(){
+  const username=localStorage.getItem("loggedInUser");
+  if(username){
+    let users=JSON.parse(localStorage.getItem("users"))||[];
+    const user=users.find(u=>u.username===username);
+    if(user) showDashboard(user);
+  } else showLogin();
+};
+</script>
+</body>
+</html>
